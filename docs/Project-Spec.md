@@ -95,3 +95,5 @@ Hard rules: do not pass week 1 without clean extraction; do not extend past week
 > "ตัวอย่างของที่ตกหล่นบ่อยๆ พอจะนึกออกไหมครับ — เคสไหนที่จำได้ชัดว่า 'อันนี้พลาดบ่อย'?"
 > "งานส่วนไหนที่ถอดยากที่สุด/เสียเวลาที่สุด — ไฟฟ้า ประปา โครงสร้าง?"
 > "ตอนนี้ทำ BOQ แบบ manual ใช้เวลากี่ชั่วโมง/วันต่อโครงการครับ?" *(needed as the before/after baseline for weeks 5–6)*
+
+
