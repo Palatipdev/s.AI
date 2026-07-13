@@ -80,7 +80,8 @@ Hard rules: do not pass week 1 without clean extraction; do not extend past week
 - 2026-07-11: File format confirmed (DWG + PNG for 2D; SketchUp 3D set aside). The scanned-image worst case is off the table pending the week-1 wrapper check.
 - 2026-07-11: Two LLM Council sessions run. Verdict: build as a **6–8 week eval-first project**, not the floated 4–5 month intense build. Reasoning: the resume-valuable artifact (parser + classifier + measured accuracy report) lands by week 8; months 3–5 buy polish a hiring manager never sees. Startup framing ("Thai construction data moat") explicitly rejected — inverts the user's goal of leaving construction for Australian tech work.
 - 2026-07-11: Framing rule adopted as standing law: every external artifact leads with document-extraction/LLM-orchestration/eval engineering, never "construction app." Same code, opposite resume value.
-- Flagged, unresolved: (1) user's Australian visa/right-to-work pathway is the real gate on the "stay in Australia" goal — verify independently of this project; (2) IP permission for anonymized public use of drawings/BOQs must be obtained with the sample files, or portfolio value drops to interview-conversation only.
+- 2026-07-10: IP permission for anonymized public use of drawings/BOQs — **granted**. Portfolio use of anonymized files is cleared; the public-repo blocker on that count is resolved.
+- Flagged, unresolved: (1) user's Australian visa/right-to-work pathway is the real gate on the "stay in Australia" goal — verify independently of this project.
 
 ## Open Questions — for the aunt (and dad)
 

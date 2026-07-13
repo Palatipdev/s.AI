@@ -21,8 +21,7 @@
 
 ## Open Questions / TODO
 
-- [ ] Send the file-request message to the aunt (questions in `Project-Spec.md`).
-- [ ] Week-1 parser validation once files arrive (DWG → DXF → JSON → render over PNG).
+- [ ] Week-1 parser validation once files arrive (DWG → DXF → JSON → render over PNG). **This is the only blocker — waiting on the aunt's DWG + finished BOQ.**
 - [ ] Get the manual-takeoff time baseline (hours/days per project) — needed for the week 5–6 before/after measurement.
 - [ ] User to verify Australian post-study visa pathway (485) independently — flagged by both council rounds as the real gate on the "stay in Australia" goal; not a project task but tracked here so it doesn't get lost.
 

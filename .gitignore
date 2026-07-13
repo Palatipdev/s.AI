@@ -216,3 +216,18 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# --- s.AI project rules ---
+
+# proprietary drawings + BOQs — never commit
+data/
+# except anonymized fixtures cleared for public use
+!data/fixtures/
+!data/fixtures/**
+
+# secrets
+*.key
+
+# scratch
+notebooks/
+eval/reports/
