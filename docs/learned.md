@@ -204,9 +204,13 @@ which reduces friction compared to typing
   - Still dont know what JWKs means and why having a function that checks that with the parameter is more efficient and will solve the problem of not checking in time before the browser load since both are essentially token fetching so I thought they would have the same time complexity
     - ANSWER: supabase.auth.get_user() is a network round trip, while jwt.decode() = local CPU-only math  basically no network latency
 
-### 2026-09-07 — <topic>
+### 2026-13-07 — Reading DXF with exdxf
 - What I learned (in my own words):
-- Why it matters / where it applies:w
+  - Scripts to read dxf using exdxf library and prints them out
+  - Wrote another script to read entities , put them in a dictionary then dump that dict into json file inside data
+  - 800k lines of json parsed text overwhelming at first
+- Why it matters / where it applies:
 - Open question I still have:
+  - Very confusing, back to dark magic like the start of s.track, but I feel that I am learning which is good.
 
 <!-- Add new entries above this line -->
