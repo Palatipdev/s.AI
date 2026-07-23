@@ -231,3 +231,11 @@ data/
 # scratch
 notebooks/
 eval/reports/
+render.png
+
+# personal / internal docs — not for the public repo
+docs/claude-rule.md
+docs/linkedin-build-log.md
+docs/strack-recap.md
+docs/Project-Context.md
+docs/Project-Spec.md
