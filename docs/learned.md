@@ -213,4 +213,40 @@ which reduces friction compared to typing
 - Open question I still have:
   - Very confusing, back to dark magic like the start of s.track, but I feel that I am learning which is good.
 
+### 2026-07-15 — Plotting script in python
+- What I learned (in my own words):
+  - I just found out today that you can plot inside of python using matplotlib.pyplot library
+  - fetching json file and retreiving their x and y value to plot
+- Why it matters / where it applies:
+  -
+- Open question I still have:
+  -
+
+### 2026-07-23 — BOQ first problem
+- What I learned (in my own words):
+  - BOQ quantities aren't drawn, they're computed. The drawing gives design + placement; the estimator multiplies footing-count × piles-per-footing. Pipeline must do that multiplication, not "read" a number.
+  - identifying manually inside CAD drawings for engineers counting logic
+  - Hardcoding specifics measurement and fixed on one sheet in modelspace to prove the math works
+  - BOQ split into 6 disciple with structural work being one of them
+- Why it matters / where it applies:
+  - Every project I take on, requires more technical depth and domain knowledge. with previous projects, I could get away with vibe-coding and let AI tutor me. But for this project. I need to be the analyser and the direction pointer for the AI
+  - AI can't replace this. information that are scattered and aren't clear math for calculation. needs human eyes to find the formula. I've been looking at these CAD drawings in depth depicting for the "perfect formula" for the first. This is real engineering work. solving hard and unclear problems. No vibe-coding on this one.
+- Open question I still have:
+  -DXF have many footing plan, how will AI knows which one to iterate and pipeline on? Does it need a title text to identifies each of the Footing plan?
+  - Probably requires title indication on where to count from
+
+Design pattern I am thinking of fixing the sheet problem:
+
+segment modelspace into sheets → extract each sheet's title →
+[human picks target sheet] → run material extraction scoped to that sheet
+
+### 2026-07-17 —
+- What I learned (in my own words):
+  
+- Why it matters / where it applies:
+  -
+- Open question I still have:
+  -
+
+
 <!-- Add new entries above this line -->
