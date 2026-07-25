@@ -26,6 +26,9 @@ for e in doc.modelspace():
     elif etype == "MTEXT":
         rec["text"] = e.text          # note: property, not e.dxf.text
         rec["insert"] = list(e.dxf.insert)
+    elif etype == "DIMENSION":
+        rec["measurement"] = e.get_measurement()   # the actual number
+        rec["insert"] = list(e.dxf.text_midpoint)   # where the number sits
     else:
         continue
 
