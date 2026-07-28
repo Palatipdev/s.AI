@@ -2,6 +2,8 @@ import json
 import sys
 from pathlib import Path
 
+sys.stdout.reconfigure(encoding="utf-8")
+
 import ezdxf
 
 DXF = Path(sys.argv[1])
@@ -39,3 +41,24 @@ OUT.parent.mkdir(parents=True, exist_ok=True)
 OUT.write_text(json.dumps(entities, ensure_ascii=False, indent=2), encoding="utf-8")
 
 print(f"{len(entities)} entities -> {OUT}")
+
+# block definitions: the geometry inside each reusable symbol (piles per footing etc.)
+blocks = {}
+for block in doc.blocks:
+    if block.name.startswith(("*", "$")):  # skip anonymous/system blocks
+        continue
+    shapes = []
+    for e in block:
+        etype = e.dxftype()
+        if etype == "LWPOLYLINE":
+            pts = [(p[0], p[1]) for p in e.get_points()]
+            shapes.append({"type": etype, "layer": e.dxf.layer, "points": pts})
+        elif etype == "LINE":
+            shapes.append({"type": etype, "layer": e.dxf.layer,
+                           "start": list(e.dxf.start), "end": list(e.dxf.end)})
+    if shapes:
+        blocks[block.name] = shapes
+
+BLK = OUT.with_name(DXF.stem + ".blocks.json")
+BLK.write_text(json.dumps(blocks, ensure_ascii=False), encoding="utf-8")
+print(f"{len(blocks)} block definitions -> {BLK}")

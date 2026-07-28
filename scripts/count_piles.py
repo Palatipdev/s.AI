@@ -5,9 +5,32 @@ from collections import Counter
 from pathlib import Path
 
 TARGET_SHEET = "S2.01"
-pile_value = {"F1": 5, "F2": 3, "F3": 1, "F4": 1}  # TODO: read from paired S3 detail
+PILE_SIZE = 0.2  # เสาเข็ม 0.20x0.20 — a pile mark is a 0.2x0.2 square in the footing block
 
-entities = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+src = Path(sys.argv[1])
+entities = json.loads(src.read_text(encoding="utf-8"))
+blocks = json.loads(src.with_name(src.stem + ".blocks.json").read_text(encoding="utf-8"))
+
+# derive piles-per-footing-type from the footing block definitions:
+# count 0.2x0.2 squares inside each block named F1-*, F2-*, ...
+def square_size(shape):
+    xs = [p[0] for p in shape["points"]]
+    ys = [p[1] for p in shape["points"]]
+    return max(xs) - min(xs), max(ys) - min(ys)
+
+pile_value = {}
+for name, shapes in blocks.items():
+    m = re.match(r"^(F\d)", name)
+    if not m:
+        continue
+    n = sum(
+        1 for s in shapes
+        if s["type"] == "LWPOLYLINE"
+        and all(abs(d - PILE_SIZE) < 0.05 for d in square_size(s))
+    )
+    if n:
+        pile_value[m.group(1)] = n
+print("piles per footing type (from block definitions):", pile_value)
 
 # 1. sheet anchors: every drawing-number label and its position
 pat = re.compile(r"^[A-Z]{1,2}\d\.\d")

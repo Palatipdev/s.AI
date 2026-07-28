@@ -240,9 +240,9 @@ Design pattern I am thinking of fixing the sheet problem:
 segment modelspace into sheets → extract each sheet's title →
 [human picks target sheet] → run material extraction scoped to that sheet
 
-### 2026-07-17 —
+### 2026-07-26 — Partial accuracy 
 - What I learned (in my own words):
-  
+  - Partial accuracy can only be useful with a flagging tools
 - Why it matters / where it applies:
   -
 - Open question I still have:
