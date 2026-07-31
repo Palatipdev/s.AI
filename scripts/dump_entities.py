@@ -20,6 +20,9 @@ for e in doc.modelspace():
     elif etype == "INSERT":
         rec["name"] = e.dxf.name
         rec["insert"] = list(e.dxf.insert)
+        rec["rotation"] = e.dxf.rotation      # degrees
+        rec["xscale"] = e.dxf.xscale          # negative = mirrored
+        rec["yscale"] = e.dxf.yscale
     elif etype == "LWPOLYLINE":
         rec["points"] = [(p[0], p[1]) for p in e.get_points()]
     elif etype == "TEXT":
