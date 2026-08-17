@@ -16,9 +16,9 @@ import sheets as S
 # plausible cross-section bounds (m) — filters out rebar ticks and sheet borders
 MIN_DIM, MAX_DIM = 0.10, 1.60
 MAX_LABEL_DIST = 1.0
-# a label must sit closer to its own section than to any neighbouring one, so the
-# search radius is capped at half the spacing between labels on that schedule
-NEIGHBOUR_FRACTION = 0.45
+# a label sits beside its own section; sections on a schedule are drawn far
+# enough apart that a small fixed radius picks the right one
+SECTION_RADIUS = 0.55
 
 
 def _centroid(points):
@@ -26,12 +26,13 @@ def _centroid(points):
             sum(p[1] for p in points) / len(points))
 
 
-def read_schedule(entities, anchors, sheet, prefix):
+def read_schedule(entities, anchors, sheet, prefix, ents=None):
     """
     {label: (width, depth)} for every `prefix`-labelled element drawn on `sheet`.
     Matches each label to the nearest plausibly-sized rectangle.
     """
-    ents = S.entities_on_sheet(entities, anchors, sheet)
+    if ents is None:
+        ents = S.entities_on_sheet(entities, anchors, sheet)
 
     boxes = []
     for e in ents:
@@ -52,46 +53,50 @@ def read_schedule(entities, anchors, sheet, prefix):
     if not labels:
         return {}
 
-    # how far apart are neighbouring labels on this schedule?
-    spacing = MAX_LABEL_DIST
-    if len(labels) > 1:
-        gaps = []
-        for i, (_, x, y) in enumerate(labels):
-            d = [((x - ox) ** 2 + (y - oy) ** 2) ** 0.5
-                 for j, (_, ox, oy) in enumerate(labels) if i != j]
-            if d:
-                gaps.append(min(d))
-        if gaps:
-            spacing = min(MAX_LABEL_DIST, sorted(gaps)[len(gaps) // 2])
-    radius = max(0.25, spacing * NEIGHBOUR_FRACTION)
-
     out = {}
     for label, x, y in labels:
         if label in out:
             continue
-        nearby = [
-            b for b in boxes
-            if ((b[0][0] - x) ** 2 + (b[0][1] - y) ** 2) ** 0.5 <= radius
-        ]
-        if not nearby:
-            continue
         # a section is drawn as nested rectangles (outline + rebar cage) — the
-        # outline is the outermost, so take the largest box within the radius
-        best = max(nearby, key=lambda b: b[1] * b[2])
-        out[label] = (round(best[1], 3), round(best[2], 3))
+        # outline is the outermost, so take the largest box near the label.
+        # Widen once for labels whose section is drawn further off (small
+        # lintel-type beams sit apart from the main section grid).
+        for radius in (SECTION_RADIUS, MAX_LABEL_DIST):
+            nearby = [
+                b for b in boxes
+                if ((b[0][0] - x) ** 2 + (b[0][1] - y) ** 2) ** 0.5 <= radius
+            ]
+            if nearby:
+                best = max(nearby, key=lambda b: b[1] * b[2])
+                out[label] = (round(best[1], 3), round(best[2], 3))
+                break
     return out
 
 
 def all_schedules(entities, anchors, sheets=("S3.02", "S3.03", "S3.04")):
-    """Merge beam and column schedules across the detail sheets."""
-    beams, columns = {}, {}
-    for sh in sheets:
-        if sh not in anchors:
-            continue
-        for label, dims in read_schedule(entities, anchors, sh, "B").items():
-            beams.setdefault(label, dims)
-        for label, dims in read_schedule(entities, anchors, sh, "C").items():
-            columns.setdefault(label, dims)
+    """
+    Merge beam and column schedules across the detail sheets.
+
+    A single element type's section may be drawn on any of the adjacent detail
+    sheets, so they are read as one region rather than sheet by sheet.
+    """
+    present = [s for s in sheets if s in anchors]
+    ents = S.entities_near(entities, anchors, present)
+    # a section drawn right at a frame edge can fall between two adaptive frames;
+    # include the band the detail sheets span so nothing is lost in the seams
+    if present:
+        xs = [anchors[s][0] for s in present]
+        ys = [anchors[s][1] for s in present]
+        x0, x1 = min(xs) - S.SHEET_W, max(xs) + 1.0
+        y0, y1 = min(ys) - 1.5, max(ys) + S.SHEET_H
+        seen = {e.get("handle") for e in ents}
+        for e in entities:
+            p = S.position(e)
+            if p and x0 <= p[0] <= x1 and y0 <= p[1] <= y1 and e.get("handle") not in seen:
+                ents.append(e)
+                seen.add(e.get("handle"))
+    beams = read_schedule(entities, anchors, None, "B", ents=ents)
+    columns = read_schedule(entities, anchors, None, "C", ents=ents)
     return beams, columns
 
 
