@@ -36,10 +36,16 @@ ROOF_DECK = "S2.05"   # counted with 1.4's level, not a BOQ section of its own
 SLAB_THICKNESS = 0.12   # from the S3.03 schedule dimensions (0.10-0.15 range)
 STOREY_HEIGHT = 3.0     # fallback when the level ladder cannot be read
 
-# The lowest framed level is a slab on grade: thickened edges and a ground-beam
-# grid make it heavier than a suspended slab of the same footprint. The drawing
-# does not dimension that difference, so it is FLAGGED rather than assumed away.
-GROUND_FLOOR_FACTOR = 1.0
+# Level 1 (BOQ 1.2) reads ~30% low while levels 2 and 3 land inside 10% on the
+# same method. It is the only level carrying an S4 slab type and the only one
+# with a งานดินถมรองพื้น (sub-base fill) row in the BOQ — both signs of a slab on
+# grade with thickened edges and ground beams rather than a suspended slab. The
+# drawing does not dimension that extra concrete, so the shortfall is reported
+# as a known gap rather than closed with a fitted factor.
+GROUND_FLOOR_NOTE = (
+    "level 1 is a slab on grade (S4 panels, sub-base fill in the BOQ); "
+    "thickened edges and ground beams are not dimensioned in the drawing"
+)
 
 # Level callouts drawn on the elevation, at 1:1 scale. Storey height is the gap
 # between consecutive levels, so columns on a given floor run to the next one up.
@@ -316,6 +322,8 @@ def main():
             "formwork": (total_form, "ตร.ม.", "grid"),
             "_detail": f"{bn} beam / {cn} column / {sn} slab labels on {sheet}",
         }
+        if i == 0:
+            results[section]["_flag"] = GROUND_FLOOR_NOTE
 
     # --- report -------------------------------------------------------------
     for section in sorted(results):
@@ -323,6 +331,8 @@ def main():
         print(f"\n--- section {section}")
         if "_detail" in r:
             print(f"    {r['_detail']}")
+        if "_flag" in r:
+            print(f"    FLAGGED: {r['_flag']}")
         for name, value in r.items():
             if name.startswith("_"):
                 continue
