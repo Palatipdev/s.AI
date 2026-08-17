@@ -28,11 +28,47 @@ sys.stdout.reconfigure(encoding="utf-8")
 FRAMING = {"1.2": "S2.02", "1.3": "S2.03", "1.4": "S2.04", "1.5": "S2.05"}
 
 SLAB_THICKNESS = 0.12   # from the S3.03 schedule dimensions (0.10-0.15 range)
-STOREY_HEIGHT = 3.0     # typical; columns run floor to floor
+STOREY_HEIGHT = 3.0     # fallback when the level ladder cannot be read
+
+# Level callouts drawn on the elevation, at 1:1 scale. Storey height is the gap
+# between consecutive levels, so columns on a given floor run to the next one up.
+LEVEL_MIN, LEVEL_MAX = 0.0, 30.0
+ELEVATION_REGION = (640, 760, 40, 140)  # x0, x1, y0, y1 in modelspace
 
 # Factors recovered from the firm's own BOQ (constant across all six sections).
 NAILS_PER_FORMWORK_M2 = 0.30      # ตะปู, kg per m2 of formwork
 WIRE_PER_REBAR_KG = 0.030         # ลวดผูกเหล็ก, kg per kg of rebar
+
+
+def floor_levels(entities, region=ELEVATION_REGION):
+    """
+    Floor levels in metres, read from the elevation's level callouts (+2.100 etc).
+
+    The elevation is drawn 1:1, so the callouts are the building's real levels.
+    Returns them sorted; consecutive gaps are the storey heights.
+    """
+    x0, x1, y0, y1 = region
+    found = set()
+    for e in entities:
+        if e["type"] not in ("TEXT", "MTEXT") or "insert" not in e:
+            continue
+        x, y = e["insert"][0], e["insert"][1]
+        if not (x0 < x < x1 and y0 < y < y1):
+            continue
+        for m in re.findall(r"[+]\s?(\d{1,2}\.\d{2,3})", S.clean_text(e.get("text", ""))):
+            v = float(m)
+            if LEVEL_MIN <= v <= LEVEL_MAX:
+                found.add(round(v, 3))
+    return sorted(found)
+
+
+def storey_heights(levels, n_floors):
+    """Height of each storey, longest run first, padded with the typical height."""
+    gaps = [b - a for a, b in zip(levels, levels[1:]) if 1.0 <= b - a <= 8.0]
+    if not gaps:
+        return [STOREY_HEIGHT] * n_floors
+    typical = sorted(gaps)[len(gaps) // 2]
+    return (gaps + [typical] * n_floors)[:n_floors]
 
 
 def element_labels(entities, anchors, sheet, prefix):
@@ -179,18 +215,23 @@ def main():
 
     # --- 1.2-1.5 superstructure ---------------------------------------------
     typical_bay = project_bay_span(entities, anchors, FRAMING.values())
+    levels = floor_levels(entities)
+    heights = storey_heights(levels, len(FRAMING))
     print(f"typical structural bay: {typical_bay:.2f} m (from grid dimensions)")
+    print(f"floor levels: {levels}")
+    print(f"storey heights: {[round(h, 2) for h in heights]}")
 
-    for section, sheet in FRAMING.items():
+    for i, (section, sheet) in enumerate(FRAMING.items()):
         if sheet not in anchors:
             continue
         beams = element_labels(entities, anchors, sheet, "B")
         cols = element_labels(entities, anchors, sheet, "C")
         slabs = element_labels(entities, anchors, sheet, "S")
         span = bay_span(entities, anchors, sheet, fallback=typical_bay)
+        height = heights[i] if i < len(heights) else STOREY_HEIGHT
 
         bv, bf, bn = estimate_beams(beams, beam_sec, span)
-        cv, cf, cn = estimate_columns(cols, col_sec)
+        cv, cf, cn = estimate_columns(cols, col_sec, height)
         sv, sf, sn = estimate_slabs(slabs)
 
         total_conc = bv + cv + sv
