@@ -6,8 +6,13 @@ from pathlib import Path
 
 TARGET_SHEET = "S2.01"
 PAD_THICKNESS = 0.5      # annotated on the footing sections (0.500, consistent across sheets)
-PEDESTAL_HEIGHT = 0.86   # FLAGGED: not annotated, measured from section geometry (siblings show 0.85)
 COLUMN_MAX = 0.6         # squares this size or smaller inside a footing block are columns, not pads
+
+# A ตอม่อ runs from the top of its pad up to the ground floor, so its height is
+# the level-1 floor level read off the elevation (+2.100), less the pad. An
+# earlier reading of 0.86 measured only one segment of the stem, not the whole.
+DEFAULT_GROUND_LEVEL = 2.10
+PEDESTAL_HEIGHT = DEFAULT_GROUND_LEVEL - 0.0   # pad top sits at the pedestal base
 
 # Blinding layers under each footing. The drawing does not dimension these — they
 # are a construction standard the estimator applies — so they are derived from the
@@ -48,8 +53,11 @@ def nearest_sheet(anchors, x, y):
     return min(anchors, key=lambda a: (a[1] - x) ** 2 + (a[2] - y) ** 2)[0]
 
 
-def compute(entities, blocks, target_sheet=TARGET_SHEET, verbose=False):
-    """Returns (total_m3, pad_m3, ped_m3, per_type_dict)."""
+def compute(entities, blocks, target_sheet=TARGET_SHEET, verbose=False,
+            pedestal_height=None):
+    """Foundation quantities for one footing plan, as a dict of BOQ lines."""
+    if pedestal_height is None:
+        pedestal_height = PEDESTAL_HEIGHT
     geometry = {}
     for name, shapes in blocks.items():
         m = re.match(r"^(F\d)", name)
@@ -99,10 +107,10 @@ def compute(entities, blocks, target_sheet=TARGET_SHEET, verbose=False):
             continue
         n = counts[t]
         pad_v = g["pad_area"] * PAD_THICKNESS * n
-        ped_v = g["column_area"] * PEDESTAL_HEIGHT * n
+        ped_v = g["column_area"] * pedestal_height * n
         # formwork is the vertical face of each pour: pad edge and pedestal sides
         form = (g["pad_perimeter"] * PAD_THICKNESS
-                + g["column_perimeter"] * PEDESTAL_HEIGHT) * n
+                + g["column_perimeter"] * pedestal_height) * n
         pad_total += pad_v
         ped_total += ped_v
         formwork_total += form
@@ -119,7 +127,7 @@ def compute(entities, blocks, target_sheet=TARGET_SHEET, verbose=False):
             print(f"{t:6} {v['count']:>3} {v['pad_m3']:>8.2f} {v['ped_m3']:>8.2f} "
                   f"{v['form_m2']:>9.2f}")
         print(f"\npads      {pad_total:.1f} m3   (thickness {PAD_THICKNESS}, from dimensions)")
-        print(f"pedestals {ped_total:.1f} m3   (height {PEDESTAL_HEIGHT}, FLAGGED - not annotated)")
+        print(f"pedestals {ped_total:.1f} m3   (height {pedestal_height:.2f}, from the elevation level ladder)")
         print(f"concrete  {pad_total + ped_total:.1f} m3   vs BOQ 53 m3")
         print(f"formwork  {formwork_total:.1f} m2   vs BOQ 296 m2")
         print(f"sand      {sand:.1f} m3   vs BOQ 14 m3  (spec-derived)")

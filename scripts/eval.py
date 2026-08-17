@@ -64,7 +64,11 @@ def compute_all(entities, blocks):
     beam_sec, col_sec = schedules.all_schedules(entities, anchors)
 
     piles, _, _ = count_piles.compute(entities, blocks)
-    found = count_concrete.compute(entities, blocks)
+    # a ตอม่อ runs from its pad up to the ground floor, so its height is the
+    # first floor level on the elevation's level ladder
+    levels = ES.floor_levels(entities)
+    ground = next((v for v in levels if v > 0.5), count_concrete.PEDESTAL_HEIGHT)
+    found = count_concrete.compute(entities, blocks, pedestal_height=ground)
     out = {
         ("1.1", "เสาเข็ม 0.20x0.20x6.00 ม."): piles,
         ("1.1", "คอนกรีตโครงสร้าง"): found["concrete"],
