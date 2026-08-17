@@ -20,6 +20,16 @@ def polygon_area(points):
     return abs(a) / 2
 
 
+def polygon_perimeter(points):
+    """Edge length around a polygon — the run of formwork needed to cast it."""
+    p = 0.0
+    for i in range(len(points)):
+        x1, y1 = points[i]
+        x2, y2 = points[(i + 1) % len(points)]
+        p += ((x2 - x1) ** 2 + (y2 - y1) ** 2) ** 0.5
+    return p
+
+
 def size(shape):
     xs = [p[0] for p in shape["points"]]
     ys = [p[1] for p in shape["points"]]
@@ -51,7 +61,9 @@ def compute(entities, blocks, target_sheet=TARGET_SHEET, verbose=False):
 
         geometry[m.group(1)] = {
             "pad_area": polygon_area(pad["points"]),
+            "pad_perimeter": polygon_perimeter(pad["points"]),
             "column_area": sum(polygon_area(c["points"]) for c in columns),
+            "column_perimeter": sum(polygon_perimeter(c["points"]) for c in columns),
         }
 
     pat = re.compile(r"^[A-Z]{1,2}\d\.\d")
@@ -70,26 +82,34 @@ def compute(entities, blocks, target_sheet=TARGET_SHEET, verbose=False):
 
     pad_total = 0.0
     ped_total = 0.0
+    formwork_total = 0.0
     per_type = {}
     for t in sorted(counts):
         g = geometry.get(t)
         if not g:
             continue
-        pad_v = g["pad_area"] * PAD_THICKNESS * counts[t]
-        ped_v = g["column_area"] * PEDESTAL_HEIGHT * counts[t]
+        n = counts[t]
+        pad_v = g["pad_area"] * PAD_THICKNESS * n
+        ped_v = g["column_area"] * PEDESTAL_HEIGHT * n
+        # formwork is the vertical face of each pour: pad edge and pedestal sides
+        form = (g["pad_perimeter"] * PAD_THICKNESS
+                + g["column_perimeter"] * PEDESTAL_HEIGHT) * n
         pad_total += pad_v
         ped_total += ped_v
-        per_type[t] = {"count": counts[t], "pad_m3": pad_v, "ped_m3": ped_v}
+        formwork_total += form
+        per_type[t] = {"count": n, "pad_m3": pad_v, "ped_m3": ped_v, "form_m2": form}
 
     if verbose:
-        print(f"{'type':6} {'n':>3} {'pad m3':>8} {'ped m3':>8}")
+        print(f"{'type':6} {'n':>3} {'pad m3':>8} {'ped m3':>8} {'form m2':>9}")
         for t, v in per_type.items():
-            print(f"{t:6} {v['count']:>3} {v['pad_m3']:>8.2f} {v['ped_m3']:>8.2f}")
+            print(f"{t:6} {v['count']:>3} {v['pad_m3']:>8.2f} {v['ped_m3']:>8.2f} "
+                  f"{v['form_m2']:>9.2f}")
         print(f"\npads      {pad_total:.1f} m3   (thickness {PAD_THICKNESS}, from dimensions)")
         print(f"pedestals {ped_total:.1f} m3   (height {PEDESTAL_HEIGHT}, FLAGGED - not annotated)")
-        print(f"total     {pad_total + ped_total:.1f} m3   vs BOQ 53 m3")
+        print(f"concrete  {pad_total + ped_total:.1f} m3   vs BOQ 53 m3")
+        print(f"formwork  {formwork_total:.1f} m2   vs BOQ 296 m2")
 
-    return pad_total + ped_total, pad_total, ped_total, per_type
+    return pad_total + ped_total, pad_total, ped_total, per_type, formwork_total
 
 
 if __name__ == "__main__":

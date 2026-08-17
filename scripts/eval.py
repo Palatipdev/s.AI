@@ -49,10 +49,11 @@ def compute_all(entities, blocks):
     beam_sec, col_sec = schedules.all_schedules(entities, anchors)
 
     piles, _, _ = count_piles.compute(entities, blocks)
-    concrete, _, _, _ = count_concrete.compute(entities, blocks)
+    concrete, _, _, _, formwork = count_concrete.compute(entities, blocks)
     out = {
         ("1.1", "เสาเข็ม 0.20x0.20x6.00 ม."): piles,
         ("1.1", "คอนกรีตโครงสร้าง"): concrete,
+        ("1.1", "ไม้แบบ"): formwork,
     }
 
     typical_bay = ES.project_bay_span(entities, anchors, ES.FRAMING.values())

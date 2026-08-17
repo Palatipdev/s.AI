@@ -280,10 +280,11 @@ def main():
 
     # --- 1.1 foundation -----------------------------------------------------
     piles, pile_counts, _ = count_piles.compute(entities, blocks)
-    conc, pad, ped, _ = count_concrete.compute(entities, blocks)
+    conc, pad, ped, _, form = count_concrete.compute(entities, blocks)
     results["1.1"] = {
         "piles": (piles, "ต้น", "geometry"),
         "concrete": (conc, "ลบ.ม.", "geometry"),
+        "formwork": (form, "ตร.ม.", "geometry"),
     }
 
     # --- 1.2-1.5 superstructure ---------------------------------------------
