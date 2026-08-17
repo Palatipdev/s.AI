@@ -130,15 +130,60 @@ def project_bay_span(entities, anchors, sheets, fallback=3.0):
     return sorted(dims)[len(dims) // 2]
 
 
+COLLINEAR_TOL = 0.35   # labels within this of a shared axis lie on one beam run
+
+
+def beam_runs(labels_of_type):
+    """
+    Group one beam type's labels into continuous runs.
+
+    A framing plan labels a beam along its length, not once per bay, so several
+    labels sharing an axis belong to a single beam. Each label belongs to at
+    most one run — whichever orientation groups it with more neighbours — so a
+    label is never counted in both a horizontal and a vertical beam.
+    """
+    pts = [(x, y) for _, x, y in labels_of_type]
+
+    def group_along(axis, other):
+        groups = {}
+        for p in pts:
+            groups.setdefault(round(p[other] / COLLINEAR_TOL), []).append(p)
+        return {k: v for k, v in groups.items() if len(v) > 1}
+
+    horizontal = group_along(0, 1)   # labels sharing a y — a beam running in x
+    vertical = group_along(1, 0)     # labels sharing an x — a beam running in y
+
+    # claim each label for the orientation whose run contains more of its type
+    claimed = set()
+    runs = []
+    candidates = (
+        [(len(v), 0, 1, v) for v in horizontal.values()]
+        + [(len(v), 1, 0, v) for v in vertical.values()]
+    )
+    for _, axis, other, group in sorted(candidates, reverse=True):
+        fresh = [p for p in group if p not in claimed]
+        if len(fresh) < 2:
+            continue
+        claimed.update(fresh)
+        vals = [p[axis] for p in fresh]
+        runs.append((max(vals) - min(vals), len(fresh), other))
+    return runs
+
+
 def estimate_beams(labels, beam_sections, span):
     """
     Beam concrete from labels on a framing plan.
 
-    Each label marks one beam span; span length comes from the plan's bay grid.
+    Labels of one type sharing an axis mark a single continuous beam, so length
+    comes from the extent of each run rather than from one bay per label.
+    Isolated labels fall back to a single bay.
     """
     if not labels:
         return 0.0, 0.0, 0
-    by_type = Counter(l[0] for l in labels)
+
+    by_type = {}
+    for label, x, y in labels:
+        by_type.setdefault(label, []).append((label, x, y))
 
     # a label whose type is missing from the schedule still represents a real
     # beam — fall back to the median section rather than dropping it
@@ -146,15 +191,26 @@ def estimate_beams(labels, beam_sections, span):
 
     volume = 0.0
     formwork = 0.0
-    for label, n in by_type.items():
+    count = 0
+    for label, group in by_type.items():
         sec = beam_sections.get(label, default)
+        count += len(group)
         if not sec:
             continue
         w, d = sec
-        volume += w * d * span * n
+
+        runs = beam_runs(group)
+        length = sum(r[0] for r in runs)
+        covered = sum(r[1] for r in runs)
+        # labels not part of any run still represent a bay of beam
+        length += max(0, len(group) - covered) * span
+        if length == 0:
+            length = len(group) * span
+
+        volume += w * d * length
         # formwork wraps two sides and the soffit
-        formwork += (2 * d + w) * span * n
-    return volume, formwork, sum(by_type.values())
+        formwork += (2 * d + w) * length
+    return volume, formwork, count
 
 
 def _median_section(sections):
