@@ -238,11 +238,17 @@ def estimate_columns(labels, column_sections, height=STOREY_HEIGHT):
     return volume, formwork, sum(by_type.values())
 
 
-def estimate_slabs(labels, thickness=SLAB_THICKNESS):
-    """Slab panels: area from the plan extent, divided across labelled panels."""
+def estimate_slabs(labels, thickness=SLAB_THICKNESS, bound=None):
+    """
+    Slab concrete for a floor.
+
+    Slab labels sit inside panels and their spread understates the floor, so the
+    framing extent (beams bound the slab) is the better measure of floor area
+    when available.
+    """
     if not labels:
         return 0.0, 0.0, 0
-    w, h = plan_extent(labels)
+    w, h = bound if bound else plan_extent(labels)
     area = w * h
     return area * thickness, area, len(labels)
 
@@ -288,7 +294,8 @@ def main():
 
         bv, bf, bn = estimate_beams(beams, beam_sec, span)
         cv, cf, cn = estimate_columns(cols, col_sec, height)
-        sv, sf, sn = estimate_slabs(slabs)
+        # beams bound the floor, so the framing extent measures the slab
+        sv, sf, sn = estimate_slabs(slabs, bound=plan_extent(beams) if beams else None)
 
         total_conc = bv + cv + sv
         total_form = bf + cf + sf
