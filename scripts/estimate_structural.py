@@ -25,10 +25,21 @@ import sheets as S
 sys.stdout.reconfigure(encoding="utf-8")
 
 # Framing plans, in BOQ section order (1.2 = level 1, 1.3 = level 2, ...).
-FRAMING = {"1.2": "S2.02", "1.3": "S2.03", "1.4": "S2.04", "1.5": "S2.05"}
+# Confirmed against each sheet's own drawing title:
+#   S2.02 ผังเสาคานพื้นชั้น 1      S2.03 ผังโครงสร้างพื้นชั้น 2
+#   S2.04 ผังพื้นชั้น 3            S2.05 ผังพื้นชั้น 4 (ดาดฟ้า) — roof deck
+# BOQ 1.5 องค์เจดีย์ is the spire itself, drawn as details on S3.03/S3.04
+# (เจดีย์บริวาร), not as a floor plan — so it is not estimated from framing.
+FRAMING = {"1.2": "S2.02", "1.3": "S2.03", "1.4": "S2.04"}
+ROOF_DECK = "S2.05"   # counted with 1.4's level, not a BOQ section of its own
 
 SLAB_THICKNESS = 0.12   # from the S3.03 schedule dimensions (0.10-0.15 range)
 STOREY_HEIGHT = 3.0     # fallback when the level ladder cannot be read
+
+# The lowest framed level is a slab on grade: thickened edges and a ground-beam
+# grid make it heavier than a suspended slab of the same footprint. The drawing
+# does not dimension that difference, so it is FLAGGED rather than assumed away.
+GROUND_FLOOR_FACTOR = 1.0
 
 # Level callouts drawn on the elevation, at 1:1 scale. Storey height is the gap
 # between consecutive levels, so columns on a given floor run to the next one up.
@@ -325,6 +336,8 @@ def main():
     print("\n--- out of scope (no geometric basis)")
     print("    rebar (RB/DB, kg)  — requires bar-bending schedules, not in the drawing")
     print("    excavation         — site-wide strip, not per-footing pits")
+    print("    1.5 องค์เจดีย์      — the spire is drawn as details (S3.03/S3.04),")
+    print("                         not a framing plan; the label-grid method does not apply")
 
 
 if __name__ == "__main__":
