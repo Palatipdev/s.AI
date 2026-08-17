@@ -26,12 +26,19 @@ ACCURACY_TARGET = 0.10  # ±10% per line item (head engineer, 2026-07-31)
 NAILS_PER_FORMWORK = 0.30   # ตะปู, kg per m2 of formwork
 WIRE_PER_REBAR = 0.030      # ลวดผูกเหล็ก, kg per kg of rebar
 
+# Lines whose inputs were calibrated against this BOQ rather than read from the
+# drawing. They demonstrate the shape of the calculation but do not evidence
+# accuracy on an unseen project, so they are reported separately.
+CALIBRATED = {("1.1", "ทรายหยาบ"), ("1.1", "คอนกรีตหยาบ")}
+
 # (section, description, quantity, unit)
 BOQ = [
     ("1.1", "เสาเข็ม 0.20x0.20x6.00 ม.", 66, "ต้น"),
     ("1.1", "คอนกรีตโครงสร้าง", 53, "ลบ.ม."),
     ("1.1", "ไม้แบบ", 296, "ตร.ม."),
     ("1.1", "ตะปู", 64, "กก."),
+    ("1.1", "ทรายหยาบ", 14, "ลบ.ม."),
+    ("1.1", "คอนกรีตหยาบ", 7, "ลบ.ม."),
     ("1.2", "คอนกรีตโครงสร้าง", 153, "ลบ.ม."),
     ("1.2", "ไม้แบบ", 1392, "ตร.ม."),
     ("1.2", "ตะปู", 418, "กก."),
@@ -57,11 +64,13 @@ def compute_all(entities, blocks):
     beam_sec, col_sec = schedules.all_schedules(entities, anchors)
 
     piles, _, _ = count_piles.compute(entities, blocks)
-    concrete, _, _, _, formwork = count_concrete.compute(entities, blocks)
+    found = count_concrete.compute(entities, blocks)
     out = {
         ("1.1", "เสาเข็ม 0.20x0.20x6.00 ม."): piles,
-        ("1.1", "คอนกรีตโครงสร้าง"): concrete,
-        ("1.1", "ไม้แบบ"): formwork,
+        ("1.1", "คอนกรีตโครงสร้าง"): found["concrete"],
+        ("1.1", "ไม้แบบ"): found["formwork"],
+        ("1.1", "ทรายหยาบ"): found["sand"],
+        ("1.1", "คอนกรีตหยาบ"): found["lean_concrete"],
     }
 
     typical_bay = ES.project_bay_span(entities, anchors, ES.FRAMING.values())
@@ -105,20 +114,30 @@ def main():
     print("-" * 78)
 
     passed = scored = 0
+    cal_passed = cal_scored = 0
     for section, item, truth, unit in BOQ:
         actual = computed.get((section, item))
         if actual is None:
             print(f"{section:5}{item[:27]:28}{truth:>9}{'—':>10}{'—':>8}  not produced")
             continue
         err = abs(actual - truth) / truth
-        scored += 1
         ok = err <= ACCURACY_TARGET
-        passed += ok
-        print(f"{section:5}{item[:27]:28}{truth:>9}{actual:>10.1f}{err:>7.0%}  "
-              f"{'PASS' if ok else 'FLAG'}")
+        if (section, item) in CALIBRATED:
+            cal_scored += 1
+            cal_passed += ok
+            note = "pass (calibrated)" if ok else "flag (calibrated)"
+        else:
+            scored += 1
+            passed += ok
+            note = "PASS" if ok else "FLAG"
+        print(f"{section:5}{item[:27]:28}{truth:>9}{actual:>10.1f}{err:>7.0%}  {note}")
 
     print("-" * 78)
-    print(f"{passed}/{scored} line items within ±{ACCURACY_TARGET:.0%}")
+    print(f"{passed}/{scored} line items within ±{ACCURACY_TARGET:.0%}, "
+          f"measured from the drawing")
+    if cal_scored:
+        print(f"{cal_passed}/{cal_scored} further items match, but their spec constants "
+              f"were calibrated on this BOQ")
 
     print("\nout of scope — reported, not guessed:")
     for item, why in OUT_OF_SCOPE:

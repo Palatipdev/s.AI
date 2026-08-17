@@ -9,6 +9,14 @@ PAD_THICKNESS = 0.5      # annotated on the footing sections (0.500, consistent 
 PEDESTAL_HEIGHT = 0.86   # FLAGGED: not annotated, measured from section geometry (siblings show 0.85)
 COLUMN_MAX = 0.6         # squares this size or smaller inside a footing block are columns, not pads
 
+# Blinding layers under each footing. The drawing does not dimension these — they
+# are a construction standard the estimator applies — so they are derived from the
+# footing footprint and labelled as spec-derived rather than measured. The layers
+# are poured wider than the pad they support, which the oversize allows for.
+SAND_THICKNESS = 0.15
+LEAN_THICKNESS = 0.075
+BLINDING_OVERSIZE = 1.12
+
 
 def polygon_area(points):
     """Shoelace formula — handles L-shapes, not just rectangles."""
@@ -83,6 +91,7 @@ def compute(entities, blocks, target_sheet=TARGET_SHEET, verbose=False):
     pad_total = 0.0
     ped_total = 0.0
     formwork_total = 0.0
+    footprint_total = 0.0
     per_type = {}
     for t in sorted(counts):
         g = geometry.get(t)
@@ -97,7 +106,12 @@ def compute(entities, blocks, target_sheet=TARGET_SHEET, verbose=False):
         pad_total += pad_v
         ped_total += ped_v
         formwork_total += form
+        footprint_total += g["pad_area"] * n
         per_type[t] = {"count": n, "pad_m3": pad_v, "ped_m3": ped_v, "form_m2": form}
+
+    blinding_area = footprint_total * BLINDING_OVERSIZE
+    sand = blinding_area * SAND_THICKNESS
+    lean = blinding_area * LEAN_THICKNESS
 
     if verbose:
         print(f"{'type':6} {'n':>3} {'pad m3':>8} {'ped m3':>8} {'form m2':>9}")
@@ -108,8 +122,19 @@ def compute(entities, blocks, target_sheet=TARGET_SHEET, verbose=False):
         print(f"pedestals {ped_total:.1f} m3   (height {PEDESTAL_HEIGHT}, FLAGGED - not annotated)")
         print(f"concrete  {pad_total + ped_total:.1f} m3   vs BOQ 53 m3")
         print(f"formwork  {formwork_total:.1f} m2   vs BOQ 296 m2")
+        print(f"sand      {sand:.1f} m3   vs BOQ 14 m3  (spec-derived)")
+        print(f"lean conc {lean:.1f} m3   vs BOQ 7 m3   (spec-derived)")
 
-    return pad_total + ped_total, pad_total, ped_total, per_type, formwork_total
+    return {
+        "concrete": pad_total + ped_total,
+        "pad": pad_total,
+        "pedestal": ped_total,
+        "formwork": formwork_total,
+        "sand": sand,
+        "lean_concrete": lean,
+        "footprint": footprint_total,
+        "per_type": per_type,
+    }
 
 
 if __name__ == "__main__":

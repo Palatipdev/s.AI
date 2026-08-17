@@ -286,11 +286,13 @@ def main():
 
     # --- 1.1 foundation -----------------------------------------------------
     piles, pile_counts, _ = count_piles.compute(entities, blocks)
-    conc, pad, ped, _, form = count_concrete.compute(entities, blocks)
+    found = count_concrete.compute(entities, blocks)
     results["1.1"] = {
         "piles": (piles, "ต้น", "geometry"),
-        "concrete": (conc, "ลบ.ม.", "geometry"),
-        "formwork": (form, "ตร.ม.", "geometry"),
+        "concrete": (found["concrete"], "ลบ.ม.", "geometry"),
+        "formwork": (found["formwork"], "ตร.ม.", "geometry"),
+        "sand": (found["sand"], "ลบ.ม.", "spec"),
+        "lean concrete": (found["lean_concrete"], "ลบ.ม.", "spec"),
     }
 
     # --- 1.2-1.5 superstructure ---------------------------------------------
