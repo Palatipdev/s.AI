@@ -22,17 +22,25 @@ sys.stdout.reconfigure(encoding="utf-8")
 
 ACCURACY_TARGET = 0.10  # ±10% per line item (head engineer, 2026-07-31)
 
+# Ratios that hold across all six BOQ sections, recovered from the BOQ itself.
+NAILS_PER_FORMWORK = 0.30   # ตะปู, kg per m2 of formwork
+WIRE_PER_REBAR = 0.030      # ลวดผูกเหล็ก, kg per kg of rebar
+
 # (section, description, quantity, unit)
 BOQ = [
     ("1.1", "เสาเข็ม 0.20x0.20x6.00 ม.", 66, "ต้น"),
     ("1.1", "คอนกรีตโครงสร้าง", 53, "ลบ.ม."),
     ("1.1", "ไม้แบบ", 296, "ตร.ม."),
+    ("1.1", "ตะปู", 64, "กก."),
     ("1.2", "คอนกรีตโครงสร้าง", 153, "ลบ.ม."),
     ("1.2", "ไม้แบบ", 1392, "ตร.ม."),
+    ("1.2", "ตะปู", 418, "กก."),
     ("1.3", "คอนกรีตโครงสร้าง", 143, "ลบ.ม."),
     ("1.3", "ไม้แบบ", 1356, "ตร.ม."),
+    ("1.3", "ตะปู", 396, "กก."),
     ("1.4", "คอนกรีตโครงสร้าง", 68, "ลบ.ม."),
     ("1.4", "ไม้แบบ", 645, "ตร.ม."),
+    ("1.4", "ตะปู", 196, "กก."),
 ]
 
 # Rows with no geometric basis, and why. Reported, never guessed.
@@ -75,6 +83,11 @@ def compute_all(entities, blocks):
         )
         out[(section, "คอนกรีตโครงสร้าง")] = bv + cv + sv
         out[(section, "ไม้แบบ")] = bf + cf + sf
+
+    # nails follow formwork by a ratio that holds across every BOQ section
+    for (section, item), value in list(out.items()):
+        if item == "ไม้แบบ":
+            out[(section, "ตะปู")] = value * NAILS_PER_FORMWORK
 
     return out
 
