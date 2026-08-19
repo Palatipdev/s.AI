@@ -160,7 +160,8 @@ def main():
 
     scored = [i for i in items if not i["calibrated"]]
     payload = {
-        "project": "chedi, Wat Thai Lumbini",
+        # the client and project are withheld from anything published
+        "project": "religious building, structural chapter",
         "entities": len(entities),
         "blocks": len(blocks),
         "sheets": len(anchors),
