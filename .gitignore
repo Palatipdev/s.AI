@@ -236,3 +236,6 @@ render.png
 # docs are private — only README is public
 docs/
 CLAUDE.md
+
+# local tooling
+.claude/
