@@ -78,7 +78,7 @@ pip install ezdxf anthropic pydantic python-dotenv pandas matplotlib pillow
 python scripts/dump_entities.py path/to/drawing.dxf     # DXF → JSON
 python scripts/eval.py data/parsed/drawing.json         # scorecard
 python scripts/export_demo.py data/parsed/drawing.json  # demo data
-python scripts/build_demo_page.py site/index.html       # rebuild the page
+python scripts/build_demo_page.py index.html            # rebuild the page
 ```
 
 Drawings and quantities are used with the firm's permission; the files themselves are
