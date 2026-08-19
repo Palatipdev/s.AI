@@ -23,6 +23,7 @@ sys.stdout.reconfigure(encoding="utf-8")
 ITEMS = [
     {
         "id": "piles",
+        "sheet": "S2.01",
         "section": "1.1",
         "th": "เสาเข็มหกเหลี่ยมกลวง 0.20 x 0.20 x 6.00 ม.",
         "en": "Precast piles",
@@ -33,6 +34,7 @@ ITEMS = [
     },
     {
         "id": "foundation-concrete",
+        "sheet": "S2.01",
         "section": "1.1",
         "th": "คอนกรีตโครงสร้าง (ฐานราก)",
         "en": "Structural concrete — foundation",
@@ -43,6 +45,7 @@ ITEMS = [
     },
     {
         "id": "foundation-formwork",
+        "sheet": "S2.01",
         "section": "1.1",
         "th": "ไม้แบบ (ฐานราก)",
         "en": "Formwork — foundation",
@@ -52,6 +55,7 @@ ITEMS = [
     },
     {
         "id": "sand",
+        "sheet": "S2.01",
         "section": "1.1",
         "th": "ทรายหยาบ",
         "en": "Sand blinding",
@@ -61,6 +65,7 @@ ITEMS = [
     },
     {
         "id": "lean-concrete",
+        "sheet": "S2.01",
         "section": "1.1",
         "th": "คอนกรีตหยาบ",
         "en": "Lean concrete",
@@ -70,6 +75,7 @@ ITEMS = [
     },
     {
         "id": "l1-concrete",
+        "sheet": "S2.02",
         "section": "1.2",
         "th": "คอนกรีตโครงสร้าง (ชั้น 1)",
         "en": "Structural concrete — level 1",
@@ -80,6 +86,7 @@ ITEMS = [
     },
     {
         "id": "l2-concrete",
+        "sheet": "S2.03",
         "section": "1.3",
         "th": "คอนกรีตโครงสร้าง (ชั้น 2)",
         "en": "Structural concrete — level 2",
@@ -89,6 +96,7 @@ ITEMS = [
     },
     {
         "id": "l3-concrete",
+        "sheet": "S2.04",
         "section": "1.4",
         "th": "คอนกรีตโครงสร้าง (ชั้น 3)",
         "en": "Structural concrete — level 3",
@@ -98,6 +106,7 @@ ITEMS = [
     },
     {
         "id": "l2-formwork",
+        "sheet": "S2.03",
         "section": "1.3",
         "th": "ไม้แบบ (ชั้น 2)",
         "en": "Formwork — level 2",
@@ -107,6 +116,7 @@ ITEMS = [
     },
     {
         "id": "l3-formwork",
+        "sheet": "S2.04",
         "section": "1.4",
         "th": "ไม้แบบ (ชั้น 3)",
         "en": "Formwork — level 3",

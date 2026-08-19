@@ -55,6 +55,7 @@ DWG ──▶ DXF ──▶ parse ──▶ scope to sheet ──▶ measure ─
 | `count_concrete.py` | Foundation concrete, formwork, blinding layers |
 | `estimate_structural.py` | Concrete and formwork for every framed floor |
 | `eval.py` | Scores the lot against the real BOQ |
+| `render_sheets.py` | Draws each sheet the demo cites, straight from its entities |
 | `classify.py` | LLM classification of ambiguous elements (Claude API, structured output) |
 
 ## What it does not do
