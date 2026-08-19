@@ -46,9 +46,10 @@ STOREY_HEIGHT = 3.0     # fallback when the level ladder cannot be read
 # drawing does not dimension that extra concrete, so the shortfall is reported
 # as a known gap rather than closed with a fitted factor.
 GROUND_FLOOR_NOTE = (
-    "level 1 is a slab on grade (S4 panels, sub-base fill in the BOQ); "
-    "thickened edges and ground beams are not dimensioned in the drawing"
+    "level 1 is a floor on grade: it covers the building outline rather than the "
+    "framed bays, so its area comes from the outline on the footing plan"
 )
+GROUND_OUTLINE_MIN = 200.0   # m2 — a floor outline, not a detail or a bay
 
 # Level callouts drawn on the elevation, at 1:1 scale. Storey height is the gap
 # between consecutive levels, so columns on a given floor run to the next one up.
@@ -58,6 +59,23 @@ ELEVATION_REGION = (640, 760, 40, 140)  # x0, x1, y0, y1 in modelspace
 # Factors recovered from the firm's own BOQ (constant across all six sections).
 NAILS_PER_FORMWORK_M2 = 0.30      # ตะปู, kg per m2 of formwork
 WIRE_PER_REBAR_KG = 0.030         # ลวดผูกเหล็ก, kg per kg of rebar
+
+
+def ground_outline_area(entities, anchors, sheet="S2.01"):
+    """
+    Area of the building outline drawn on the footing plan.
+
+    A floor on grade is cast over the whole building footprint, not just the
+    framed bays, so this is the area its slab and sub-base layers cover.
+    """
+    best = 0.0
+    for e in S.entities_on_sheet(entities, anchors, sheet):
+        if e["type"] != "LWPOLYLINE" or not e.get("points"):
+            continue
+        area = S.polygon_area(e["points"])
+        if area > best:
+            best = area
+    return best if best >= GROUND_OUTLINE_MIN else 0.0
 
 
 def floor_levels(entities, region=ELEVATION_REGION):
@@ -273,6 +291,49 @@ def estimate_slabs(labels, thickness=SLAB_THICKNESS, bound=None):
     return area * thickness, area, len(labels)
 
 
+def estimate_floors(entities, anchors, beam_sec, col_sec):
+    """
+    Concrete and formwork per framed floor, keyed by BOQ section.
+
+    Each floor is beams + columns + slab. The lowest floor sits on grade and is
+    cast over the building outline; the ones above are bounded by their framing.
+    """
+    typical_bay = project_bay_span(entities, anchors, FRAMING.values())
+    heights = storey_heights(floor_levels(entities), len(FRAMING))
+    ground_area = ground_outline_area(entities, anchors)
+
+    out = {}
+    for i, (section, sheet) in enumerate(FRAMING.items()):
+        if sheet not in anchors:
+            continue
+        beams = element_labels(entities, anchors, sheet, "B")
+        cols = element_labels(entities, anchors, sheet, "C")
+        slabs = element_labels(entities, anchors, sheet, "S")
+        span = bay_span(entities, anchors, sheet, fallback=typical_bay)
+        height = heights[i] if i < len(heights) else STOREY_HEIGHT
+
+        bv, bf, bn = estimate_beams(beams, beam_sec, span)
+        cv, cf, cn = estimate_columns(cols, col_sec, height)
+        if i == 0 and ground_area:
+            sv, sf, sn = ground_area * SLAB_THICKNESS, ground_area, len(slabs)
+        else:
+            sv, sf, sn = estimate_slabs(
+                slabs, bound=plan_extent(beams) if beams else None
+            )
+
+        out[section] = {
+            "concrete": bv + cv + sv,
+            "formwork": bf + cf + sf,
+            "sheet": sheet,
+            "counts": (bn, cn, sn),
+            "on_grade": i == 0 and bool(ground_area),
+            "span": span,
+            "height": height,
+            "floor_area": sf,
+        }
+    return out
+
+
 def main():
     src = Path(sys.argv[1])
     entities = json.loads(src.read_text(encoding="utf-8"))
@@ -302,32 +363,20 @@ def main():
     typical_bay = project_bay_span(entities, anchors, FRAMING.values())
     levels = floor_levels(entities)
     heights = storey_heights(levels, len(FRAMING))
+    ground_area = ground_outline_area(entities, anchors)
     print(f"typical structural bay: {typical_bay:.2f} m (from grid dimensions)")
     print(f"floor levels: {levels}")
     print(f"storey heights: {[round(h, 2) for h in heights]}")
+    print(f"building outline: {ground_area:.0f} m2 (floor on grade)")
 
-    for i, (section, sheet) in enumerate(FRAMING.items()):
-        if sheet not in anchors:
-            continue
-        beams = element_labels(entities, anchors, sheet, "B")
-        cols = element_labels(entities, anchors, sheet, "C")
-        slabs = element_labels(entities, anchors, sheet, "S")
-        span = bay_span(entities, anchors, sheet, fallback=typical_bay)
-        height = heights[i] if i < len(heights) else STOREY_HEIGHT
-
-        bv, bf, bn = estimate_beams(beams, beam_sec, span)
-        cv, cf, cn = estimate_columns(cols, col_sec, height)
-        # beams bound the floor, so the framing extent measures the slab
-        sv, sf, sn = estimate_slabs(slabs, bound=plan_extent(beams) if beams else None)
-
-        total_conc = bv + cv + sv
-        total_form = bf + cf + sf
+    for section, floor in estimate_floors(entities, anchors, beam_sec, col_sec).items():
+        bn, cn, sn = floor["counts"]
         results[section] = {
-            "concrete": (total_conc, "ลบ.ม.", "grid"),
-            "formwork": (total_form, "ตร.ม.", "grid"),
-            "_detail": f"{bn} beam / {cn} column / {sn} slab labels on {sheet}",
+            "concrete": (floor["concrete"], "ลบ.ม.", "grid"),
+            "formwork": (floor["formwork"], "ตร.ม.", "grid"),
+            "_detail": f"{bn} beam / {cn} column / {sn} slab labels on {floor['sheet']}",
         }
-        if i == 0:
+        if floor["on_grade"]:
             results[section]["_flag"] = GROUND_FLOOR_NOTE
 
     # --- report -------------------------------------------------------------

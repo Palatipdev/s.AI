@@ -77,25 +77,9 @@ def compute_all(entities, blocks):
         ("1.1", "คอนกรีตหยาบ"): found["lean_concrete"],
     }
 
-    typical_bay = ES.project_bay_span(entities, anchors, ES.FRAMING.values())
-    heights = ES.storey_heights(ES.floor_levels(entities), len(ES.FRAMING))
-
-    for i, (section, sheet) in enumerate(ES.FRAMING.items()):
-        if sheet not in anchors:
-            continue
-        beams = ES.element_labels(entities, anchors, sheet, "B")
-        cols = ES.element_labels(entities, anchors, sheet, "C")
-        slabs = ES.element_labels(entities, anchors, sheet, "S")
-        span = ES.bay_span(entities, anchors, sheet, fallback=typical_bay)
-        height = heights[i] if i < len(heights) else ES.STOREY_HEIGHT
-
-        bv, bf, _ = ES.estimate_beams(beams, beam_sec, span)
-        cv, cf, _ = ES.estimate_columns(cols, col_sec, height)
-        sv, sf, _ = ES.estimate_slabs(
-            slabs, bound=ES.plan_extent(beams) if beams else None
-        )
-        out[(section, "คอนกรีตโครงสร้าง")] = bv + cv + sv
-        out[(section, "ไม้แบบ")] = bf + cf + sf
+    for section, floor in ES.estimate_floors(entities, anchors, beam_sec, col_sec).items():
+        out[(section, "คอนกรีตโครงสร้าง")] = floor["concrete"]
+        out[(section, "ไม้แบบ")] = floor["formwork"]
 
     # nails follow formwork by a ratio that holds across every BOQ section
     for (section, item), value in list(out.items()):
