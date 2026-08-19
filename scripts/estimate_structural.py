@@ -314,19 +314,23 @@ def estimate_floors(entities, anchors, beam_sec, col_sec):
 
         bv, bf, bn = estimate_beams(beams, beam_sec, span)
         cv, cf, cn = estimate_columns(cols, col_sec, height)
-        if i == 0 and ground_area:
+        on_grade = i == 0 and bool(ground_area)
+        if on_grade:
+            # a floor on grade is cast over the building outline, not the bays
             sv, sf, sn = ground_area * SLAB_THICKNESS, ground_area, len(slabs)
         else:
             sv, sf, sn = estimate_slabs(
                 slabs, bound=plan_extent(beams) if beams else None
             )
+        # slab formwork is the soffit the slab is cast on, area for area
+        slab_form = sf
 
         out[section] = {
             "concrete": bv + cv + sv,
-            "formwork": bf + cf + sf,
+            "formwork": bf + cf + slab_form,
             "sheet": sheet,
             "counts": (bn, cn, sn),
-            "on_grade": i == 0 and bool(ground_area),
+            "on_grade": on_grade,
             "span": span,
             "height": height,
             "floor_area": sf,
