@@ -107,6 +107,7 @@ HEAD = """<title>Reading quantities out of a CAD drawing</title>
   td{ padding:11px 10px 11px 0; border-bottom:1px solid var(--rule) }
   .tag{ font-size:11px; letter-spacing:.05em; text-transform:uppercase }
   .tag.ok{ color:var(--pass) } .tag.no{ color:var(--flag) }
+  .src{ font-size:12px; color:var(--soft); opacity:.75 }
   .scroll{ overflow-x:auto }
 
   .cols{ display:grid; grid-template-columns:1fr 1fr; gap:clamp(20px,3vw,38px); margin-top:22px }
@@ -143,9 +144,9 @@ def build_table(items):
         if i["calibrated"]:
             label = "pass*"
         rows.append(
-            f'<tr><td>{i["en"]}<br><span class="mono" style="font-size:12px;color:var(--soft)">'
-            f'{i["th"]}</span></td>'
-            f'<td class="mono">{i["boq"]}</td>'
+            f'<tr><td>{i["en"]}<br>'
+            f'<span class="src" title="as written in the bill of quantities">{i["th"]}</span></td>'
+            f'<td class="mono">{i["boq"]} {i["unit"]}</td>'
             f'<td class="mono">{i["pipeline"]}</td>'
             f'<td class="mono">{i["error"]}%</td>'
             f'<td class="tag {cls}">{label}</td></tr>'
@@ -214,7 +215,8 @@ BODY = """<div class="wrap">
   <div class="section">
     <h2>Every line, scored</h2>
     <p class="note">The full scorecard. Nothing is hidden: the lines that miss are shown with
-    the same weight as the ones that land.</p>
+    the same weight as the ones that land. Each row carries the item as it appears in the original
+    Thai document underneath the translation.</p>
     <div class="scroll">
       <table>
         <thead><tr><th>Item</th><th>BOQ</th><th>Pipeline</th><th>Error</th><th></th></tr></thead>
@@ -335,6 +337,32 @@ BODY = """<div class="wrap">
 </script>"""
 
 
+DESCRIPTION = (
+    "A pipeline that reads construction quantities out of CAD drawings and scores "
+    "itself against the bill of quantities engineers produced by hand."
+)
+
+# Artifacts supply their own document shell, so publishing there wants a fragment.
+# A standalone page needs the whole document.
+DOCUMENT = """<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="{description}">
+<meta property="og:title" content="Reading quantities out of a CAD drawing">
+<meta property="og:description" content="{description}">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>&#128207;</text></svg>">
+{head}
+</head>
+<body>
+{body}
+</body>
+</html>
+"""
+
+
 def main():
     body = (BODY
             .replace("__PASSED__", str(data["passed"]))
@@ -347,8 +375,12 @@ def main():
             .replace("__DATA__", json.dumps(data, ensure_ascii=False)))
 
     out = Path(sys.argv[1])
-    out.write_text(HEAD + body, encoding="utf-8")
-    print(f"{len(HEAD + body) // 1024} KB -> {out}")
+    standalone = "--fragment" not in sys.argv[2:]
+    page = (DOCUMENT.format(description=DESCRIPTION, head=HEAD, body=body)
+            if standalone else HEAD + body)
+    out.write_text(page, encoding="utf-8")
+    kind = "standalone page" if standalone else "artifact fragment"
+    print(f"{len(page) // 1024} KB {kind} -> {out}")
 
 
 if __name__ == "__main__":
