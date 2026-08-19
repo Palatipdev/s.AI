@@ -33,7 +33,10 @@ sys.stdout.reconfigure(encoding="utf-8")
 FRAMING = {"1.2": "S2.02", "1.3": "S2.03", "1.4": "S2.04"}
 ROOF_DECK = "S2.05"   # counted with 1.4's level, not a BOQ section of its own
 
-SLAB_THICKNESS = 0.12   # from the S3.03 schedule dimensions (0.10-0.15 range)
+# Suspended slab thickness. The slab schedule dimensions run 0.10-0.15, and the
+# elevation's level ladder shows a 0.225 m structural floor zone (2.100 -> 2.325)
+# — a slab plus its topping — which puts the slab itself at the upper end.
+SLAB_THICKNESS = 0.14
 STOREY_HEIGHT = 3.0     # fallback when the level ladder cannot be read
 
 # Level 1 (BOQ 1.2) reads ~30% low while levels 2 and 3 land inside 10% on the
