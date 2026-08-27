@@ -9,8 +9,8 @@ from the rectangles drawn beside each แบบขยายฐานราก ti
 
 Label scoping is per package (the chedi F1 lesson, reconfirmed here: the spire
 package's F1 pad is 1.2x1.2, the main F1 is 1.5x1.5). Every label is assigned
-to its nearest title anchor, so section annotations and the spire's F1 never
-leak into a plan's count.
+to its nearest title anchor, and a plan reads geometry only from its nearest
+foundation-detail package, so the spire's F1 never borrows the main F1.
 """
 import json
 import re
@@ -25,9 +25,10 @@ from count_concrete import polygon_area, polygon_perimeter, size
 sys.stdout.reconfigure(encoding="utf-8")
 
 # annotated on the F1/F2 sections (0.20 pad + 0.60 pedestal = 0.80 overall,
-# 0.05 lean underneath — all three dimensioned beside the sections)
+# 0.05 bedding underneath — all dimensioned beside the sections)
 PAD_THICKNESS = 0.2
 PEDESTAL_HEIGHT = 0.6
+BEDDING_THICKNESS = 0.05
 
 TITLE_KW = ("ผังฐานราก", "ผังโครงสร้าง", "ผังพื้น", "ผังหลังคา", "ผังตำแหน่ง",
             "แบบขยายฐานราก", "แปลนฐานราก", "รูปตัดฐานราก", "แบบขยาย", "รูปตัด", "รูปด้าน")
@@ -52,8 +53,7 @@ def nearest(anchors, x, y):
 
 def pad_geometry(entities, anchors, radius=4.0):
     """
-    {type: {pad_area, pad_perimeter, pad_size, column_area, column_perimeter}}
-    from the rectangles drawn around each แบบขยายฐานราก <type> title.
+    {type: geometry} from the rectangles drawn around each แบบขยายฐานราก title.
     The pad is the largest plausible rectangle; squares ≤0.6 are the pedestal.
     """
     out = {}
@@ -62,7 +62,6 @@ def pad_geometry(entities, anchors, radius=4.0):
         if not m:
             continue
         ftype = m.group(1)
-        anchor_pos = (ax, ay)
         pads, cols = [], []
         for e in entities:
             if e["type"] != "LWPOLYLINE" or not e.get("points"):
@@ -82,13 +81,12 @@ def pad_geometry(entities, anchors, radius=4.0):
                 "pad_area": polygon_area(pad["points"]),
                 "pad_perimeter": polygon_perimeter(pad["points"]),
                 "column_area": 0.0, "column_perimeter": 0.0,
+                "detail_at": (ax, ay),
             }
             if cols:
                 col = min(cols, key=lambda s: polygon_area(s["points"]))
                 rec["column_area"] = polygon_area(col["points"])
-                rec["column_perimeter"] = polygon_perimeter(col["points"])
                 rec["column_size"] = tuple(round(d, 2) for d in size(col))
-            rec["detail_at"] = anchor_pos
             out[ftype] = rec
     return out
 
@@ -108,50 +106,65 @@ def plan_counts(entities, anchors):
     return out
 
 
+def compute(entities):
+    """
+    One result dict per foundation plan:
+    {title, pos, counts, pads_m3, pedestals_m3, formwork_m2, bedding_m3, flagged}
+    """
+    anchors = titles(entities)
+    geo = pad_geometry(entities, anchors)
+    details = [(c, x, y) for c, x, y in anchors
+               if c.startswith(("แบบขยายฐานราก", "รูปตัดฐานราก"))]
+
+    plans = []
+    for i, cnt in sorted(plan_counts(entities, anchors).items()):
+        title, ax, ay = anchors[i]
+        if not title.startswith(("ผังฐานราก", "แปลนฐานราก")):
+            continue                        # labels on details/sections: scoped out
+        # the chedi pairing rule, generalized: a plan reads geometry from its
+        # NEAREST foundation-detail package. The spire plan sits beside its own
+        # รูปตัดฐานราก, so the far-away F1 detail is not its nearest package —
+        # its 1.2x1.2 pad must be measured there, never borrowed.
+        near_c, near_x, near_y = min(
+            details, key=lambda d: (d[1] - ax) ** 2 + (d[2] - ay) ** 2)
+        rec = {"title": title, "pos": (round(ax), round(ay)), "counts": dict(cnt),
+               "pads_m3": 0.0, "pedestals_m3": 0.0, "formwork_m2": 0.0,
+               "bedding_m3": 0.0, "flagged": {}}
+        for t, n in sorted(cnt.items()):
+            g = geo.get(t)
+            if not g:
+                rec["flagged"][t] = "no detail geometry"
+                continue
+            dx, dy = g["detail_at"]
+            if ((dx - near_x) ** 2 + (dy - near_y) ** 2) ** 0.5 > 30:
+                rec["flagged"][t] = f"nearest detail package is '{near_c}', geometry lives elsewhere"
+                continue
+            rec["pads_m3"] += n * g["pad_area"] * PAD_THICKNESS
+            rec["pedestals_m3"] += n * g["column_area"] * PEDESTAL_HEIGHT
+            rec["formwork_m2"] += n * g["pad_perimeter"] * PAD_THICKNESS
+            rec["bedding_m3"] += n * g["pad_area"] * BEDDING_THICKNESS
+        plans.append(rec)
+    return plans, geo
+
+
 def main():
     src = Path(sys.argv[1])
     entities = json.loads(src.read_text(encoding="utf-8"))
-    anchors = titles(entities)
-    geo = pad_geometry(entities, anchors)
+    plans, geo = compute(entities)
 
     print("pad geometry from detail sheets:")
     for t, g in sorted(geo.items()):
         print(f"  {t}: pad {g['pad_size']}, pedestal {g.get('column_size', 'NOT FOUND')}")
 
-    counts = plan_counts(entities, anchors)
-    for i, cnt in sorted(counts.items()):
-        title, ax, ay = anchors[i]
-        if not title.startswith(("ผังฐานราก", "แปลนฐานราก")):
-            continue                        # labels on details/sections: scoped out
-        print(f"\n=== {title} @ ({round(ax)},{round(ay)}) ===")
-        # the chedi pairing rule, generalized: a plan reads geometry from its
-        # NEAREST foundation-detail package. The spire plan sits beside its own
-        # รูปตัดฐานราก, so the far-away F1 detail is not its nearest package —
-        # its 1.2x1.2 pad must be measured there, never borrowed from the main
-        # building's 1.5x1.5 F1.
-        details = [(c, x, y) for c, x, y in anchors
-                   if c.startswith(("แบบขยายฐานราก", "รูปตัดฐานราก"))]
-        near_c, near_x, near_y = min(
-            details, key=lambda d: (d[1] - ax) ** 2 + (d[2] - ay) ** 2)
-        pad = ped = 0.0
-        for t, n in sorted(cnt.items()):
-            g = geo.get(t)
-            if not g:
-                print(f"  {t} x{n}: NO DETAIL GEOMETRY — flagged, not counted")
-                continue
-            dx, dy = g["detail_at"]
-            if ((dx - near_x) ** 2 + (dy - near_y) ** 2) ** 0.5 > 30:
-                print(f"  {t} x{n}: nearest detail package is '{near_c}' but the"
-                      f" {t} geometry lives elsewhere — flagged, not counted")
-                continue
-            pv = n * g["pad_area"] * PAD_THICKNESS
-            cv = n * g["column_area"] * PEDESTAL_HEIGHT
-            pad += pv
-            ped += cv
-            print(f"  {t} x{n}: pad {g['pad_size']} x {PAD_THICKNESS} -> {pv:.2f} m3"
-                  f"  + pedestal -> {cv:.2f} m3")
-        print(f"  pads {pad:.2f} + pedestals {ped:.2f} (height {PEDESTAL_HEIGHT}, annotated)"
-              f" = {pad + ped:.2f} m3")
+    for p in plans:
+        print(f"\n=== {p['title']} @ {p['pos']} ===")
+        for t, n in sorted(p["counts"].items()):
+            note = f"  [{p['flagged'][t]}]" if t in p["flagged"] else ""
+            print(f"  {t} x{n}{note}")
+        print(f"  pads {p['pads_m3']:.2f} + pedestals {p['pedestals_m3']:.2f} "
+              f"(height {PEDESTAL_HEIGHT}, annotated) = "
+              f"{p['pads_m3'] + p['pedestals_m3']:.2f} m3; "
+              f"formwork {p['formwork_m2']:.2f} m2; bedding {p['bedding_m3']:.2f} m3")
 
 
 if __name__ == "__main__":
